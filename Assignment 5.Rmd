@@ -1,0 +1,140 @@
+---
+title: "Assignment 5"
+author: "Sam Raby"
+date: "11/7/2016"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+Problem 1
+For this problem you will be looking at the obesity rates by state for the years 2012 and 2016, the data file is called Obesity2.csv on P-drive.
+
+a. With the obesity rates data, construct a plot that is similar to one to the one in DataPoints
+(Chapter 3, p.128) from earlier in the semester.
+
+```{r}
+require(mosaic)
+require(reshape2)
+require(ggplot2)
+require(maps)
+require(RColorBrewer)
+
+obese = read.csv("/Volumes/courses/QAC/qac251/course_materials/Code and Data/Obese2.csv")
+obese.long = melt(obese, id = "State")
+names(obese.long) = c("region","Year","Obesity_Rate")
+obese.long <- mutate(obese.long, Year = as.numeric(gsub(pattern = "X", "", Year)))
+
+ggplot(data = obese.long, aes(x = Year, y = Obesity_Rate, color = region))+
+  geom_point() +
+  geom_line() +
+  geom_text(data = subset(obese.long, Year == 2016), aes(x = 2016, y = Obesity_Rate, label = region, color = region), hjust = 0, nudge_x = 0.05, size = 2) + 
+  theme(legend.position="none") +
+  expand_limits(x = 2017)+
+  ylab("Obesity Rate (in %)")+
+  ggtitle("Change in Obesity Rate by State, 2012 - 2016")
+  
+```
+
+b. Using your plot from part a, list 4 different insights about the data you are able to answer.
+
+1. Lousiana had the highest obesity rate in the country, both in 2012 and in 2016.
+2. Colorado had the lowest obesity rate in the country, both in 2012 and in 2016.
+3. States like Kansas, Alaska, and Wyoming had some of the highest rates of increase in their obesity rates from 2012 to 2016. 
+4. Nationwide, many more states showed a clear increase in obesity rate than a clear decrease in obesity rate, from 2012 to 2016.
+
+c. Make a choropleth to compare how the rates have changed over time. Do you prefer this
+plot to the one you made in part a? Why?
+
+```{r}
+all_states <- map_data("state")
+obese$change = obese$X2016 - obese$X2012
+obese=mutate(obese, region=tolower(obese$State))
+
+ggplot()+
+  geom_map(data=all_states, aes(map_id=region), map=all_states)+ 
+  geom_map(data=obese, aes(map_id=region, fill = change), map = all_states) +
+  expand_limits(x = all_states$long, y = all_states$lat) +
+  scale_fill_distiller("% Change", palette = "RdYlGn") +
+  ggtitle("Change in Obesity Rate by State, 2012 - 2016") +
+  xlab("Longitude") +
+  ylab("Lattitude")
+
+```
+
+This choropleth is a lot clearer and more informative than the plot made in part a. The original plot had two main issues: one, it was hard to avoid an overlap of state labels, so some state names were hard to read, and 2, it was hard to see general trends, such as which states were increasing in obesity rate and which states were decreasing. The choropleth fixes these two issues. Now, the viewer can clearly see the change in obesity rate for each of the 48 contiguous US states. Also, the user can quickly and easily point out which states had the highest increases in obesity, and which had the lowest (or decreases). 
+
+d. Build a shiny app that allows the user to select the states that they would like to investigate
+from your plot in part a. (For this part, please use the eval=FALSE option in your
+corresponding code chunk. That is, I just want to see your code.)
+
+```{r eval=FALSE}
+
+require(shiny)
+
+ui<-fluidPage(
+  checkboxGroupInput(inputId = "criteria",
+               label = "What states would you like to look at:",
+               choices = obese$State,
+               selected = c("Wyoming","Colorado"),
+               inline = TRUE),
+  plotOutput(outputId = "scatterplot")
+)
+
+server<-function(input,output){
+  output$scatterplot<-renderPlot({
+    ggplot(data = filter(obese.long, region %in% input$criteria), aes(x = Year, y = Obesity_Rate, color = region))+
+  geom_point() +
+  geom_line() +
+  geom_text(data = filter(filter(obese.long, Year == 2016), region %in% input$criteria), aes(x = 2016, y = Obesity_Rate, label = region, color = region), hjust = 0, nudge_x = 0.05, size = 5) + 
+  theme(legend.position="none") +
+  expand_limits(x = 2017)+
+  ylab("Obesity Rate (in %)")+
+  ggtitle("Change in Obesity Rate by State, 2012 - 2016")
+      ## To treat string names as variables, we use eval(as.symbol(data$variable))
+  })
+}
+  
+shinyApp(ui=ui, server=server)
+
+```
+
+
+Problem 2
+The top export destinations of the United States are Canada ($241B), Mexico ($194B), China ($134B),
+Japan ($67.5B) and Germany ($61.6B). The top import origins are China ($432B), Canada ($331B), Mexico ($291B), Japan ($128B) and Germany ($121B).
+
+The top exports of the United States are Refined Petroleum ($103B), Cars ($60.8B), Planes, Helicopters, and/or Spacecraft ($53.2B), Vehicle Parts ($38.4B) and Packaged Medicaments ($38.1B), using the 1992 revision of the HS (Harmonized System) classification. Its top imports are Crude Petroleum ($230B), Cars ($155B), Computers ($92B), Refined Petroleum ($69.2B) and Vehicle Parts ($62.8B).
+
+Construct a riverplot that tells a story with this data. You do not need to use all of the data provided here.
+
+```{r}
+require(riverplot)
+
+nodes<-data.frame(ID=c("China","Canada","Mexico","Japan",
+                        "Germany","United States","China1","Canada1","Mexico1","Japan1",
+                        "Germany1"), 
+                   x=c(rep(0,5),1,rep(2,5)), #rep is the "repeat" function (rep "0" 10 times)
+                   y=c(1:5,3,1:5),
+                   col=c(brewer.pal(5,"Set3"),"#AAAAAA",
+                         brewer.pal(5,"Set3")),
+                   labels=c("China\n$432B","Canada\n$331B","Mexico\n$291B","Japan\n$128B",
+                        "Germany\n$121B","United States","China\n$134B","Canada\n$241B","Mexico\n$194B","Japan\n$67.5B",
+                        "Germany\n$61.6B"))
+nodes$col<-paste(nodes$col, 95, sep="")
+edges<-data.frame(N1=c("China","Canada","Mexico","Japan",
+                        "Germany",rep("United States",5)), 
+                   N2=c(rep("United States",5),"China1","Canada1","Mexico1","Japan1",
+                        "Germany1"), 
+                   Value=c(432,331,291,128,121,134,241,
+                           194,67.5,61.6))
+river_data<-makeRiver(nodes, edges)                 
+riverplot(river_data, lty = 0, srt = 30, default_style = NULL, gravity = "top",
+          node_margin = 1, nodewidth = 1, plot_area = 0.5, nsteps = 50,
+          add_mid_points = NULL, yscale = "auto")
+text("Imports and Exports of the US", x=1,y=6)
+
+```
+

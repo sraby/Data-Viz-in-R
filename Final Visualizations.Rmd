@@ -1,0 +1,197 @@
+---
+title: "Undoing the University Student Evaluation Model: A Critique through Data Visualization"
+author: "Sam Raby, QAC251 Fall 2016"
+date: "12/12/2016"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+I. Introduction 
+
+End-of-semester student evaluations, at many universities across the country, play a crucial role in deciding the professional success and attainment of faculty. At Wesleyan, the administration explicitly states that student evaluations provide data to heads of department and get consulted to assess professors when they are up for review for tenure. To a certain extent, then, student evaluations influence the make up of the faculty, as they help decide which professors get to stay at the university, which professors get promoted to positions with greater influence, and which professors do not get hired. Given this influence, any biases present in the student evaluation system have the power to reify inequalities within the university at large.  
+
+By examining a dataset of 463 student evaluations of professors from UT Austin, this inquiry aims to determine where these biases exist and how they may be affecting evaluations. It will try to answer the following questions: What is the relationship between the social and demographic identities of UT Austin professors and their student evaluation scores, and how do these relationships reflect known social stigmas and prejudice? Through thoughtful data analysis and visualization, this study will provide a critique of the student evaluation system by investigating the complex relationships between student perceptions of professors’ teaching quality and their stereotypical associations with professors' identities.
+
+II. Statement of Importance 
+
+This analysis, answering the questions above, is important because it will seek to uncover things that systems like the student evaluation system may have rendered invisible. The student evaluation system is a procedure that assigns numerical values to a professor's quality of teaching. These numbers, these scores, take on a perceived 'neutrality' as they present as empirical data rather than subjective opinions. This perceived neutrality can be highly problematic, as it allows any prejudice or bias in the student evaluation system to escape social criticism. Therefore, it is important not only to look at this data with a social consciousness, but USE this data to further understand social biases and critique the very mechanisms which create the data. 
+
+III. Code, Visualizations, and Conclusions
+
+Load in Data...
+
+```{r}
+evals = download.file("http://www.openintro.org/stat/data/evals.RData", destfile = "evals.RData")
+load("evals.RData")
+```
+
+This dataset is a collection of end-of-semester student evaluation scores for 463 professors at UT Austin in 2013. Included are the demographics of each professor and the charcteristics of each course being evaluated. In addition, six students scored each professor on their "level of beauty." Data was retrieved from OpenIntro Statistics. 
+
+Data Manipulation...
+
+```{r}
+require(mosaic)
+require(ggplot2)
+require(RColorBrewer)
+require(plotly)
+require(shiny)
+
+evals$age.range = "Younger than 35"
+evals$age.range[evals$age >= 35 & evals$age < 45] = "35 - 45"
+evals$age.range[evals$age >= 45 & evals$age < 55] = "45 - 55"
+evals$age.range[evals$age >= 55 & evals$age < 65] = "55 - 65"
+evals$age.range[evals$age >= 65] = "65 or Older"
+
+evals$age.range <- factor(evals$age.range, levels = c("Younger than 35","35 - 45","45 - 55","55 - 65","65 or Older"))
+
+evals$rank <-factor(evals$rank, levels = c("tenure track","teaching","tenured"))
+
+evals$gen.eth <- with(evals, interaction(gender, ethnicity, sep = ", "))
+
+evals = mutate(evals, score.range = cut(score, 9))
+evals <- mutate(evals, score.range = gsub(pattern = ",", "-", score.range))
+evals <- mutate(evals, score.range = gsub(pattern = "]", "", score.range))
+evals <- mutate(evals, score.range = gsub(pattern = "[(]", "", score.range))
+
+```
+
+
+Visual 1: 
+
+```{r}
+
+ggplot(data = evals)+
+  geom_violin(aes(x = cls_level, y = score, fill = cls_level)) +
+  facet_grid(~ethnicity) + 
+  scale_fill_manual("Class Level", values = c("#882D60","#7A9F35")) +
+  ggtitle("Distribution of Evaluation Scores by Professor's Ethnicity and Course Level") +
+  xlab("Course Level") +
+  ylab("Score") +
+  theme(legend.position="none") +
+  geom_text(data=data.frame(x=1, y=4.65, label=c(
+    toString(nrow(subset(evals, cls_level == "lower" & ethnicity == "minority"))),
+    toString(nrow(subset(evals, cls_level == "lower" & ethnicity == "not minority")))
+  ), 
+    ethnicity=c("minority","not minority")), 
+    aes(x,y,label=paste("n =",label)), inherit.aes=FALSE, color = "#D3B2C5") +
+  geom_text(data=data.frame(x=2, y=c(3.95,4.5), label=c(
+    toString(nrow(subset(evals, cls_level == "upper" & ethnicity == "minority"))),
+    toString(nrow(subset(evals, cls_level == "upper" & ethnicity == "not minority")))
+  ), 
+    ethnicity=c("minority","not minority")), 
+    aes(x,y,label=paste("n =",label)), inherit.aes=FALSE, color = "#D2EE9E")
+
+```
+
+This plot is designed to communicate general differences in evaluation scores between professors of different minority status and course level. Many conclusions can be drawn from this plot. Primarily, this plot shows that upper-level professors generally receive lower evaluation scores than those of lower-level professors. This plot does not indicate a noticeable difference in score distribution between minority lower-level professors and non-minority lower-level professors. However, upper-level professors that are racial/ethnic minorities receive strikingly lower evaluation scores compared to all other categories shown. While the most common score for other types of professors lies around 4.5, the most common score for minority professors in upper-level classes is slightly below 4. This implies that minority professors in upper-level positions receive harsher criticism than minorities teaching lower-level classes and non-minorities, suggesting possibly that the student body has a specific bias against non-white professors in high positions. By enumerating the counts, the plot also communiticates the low representation of minority professors in this sample of professors that represents the university.
+
+
+Visual 2: 
+
+```{r}
+
+gg<-ggplot(data = evals) +
+  geom_bin2d(aes(x = age, y = score, fill = gender, text = paste("Gender:",gender,
+                                                                 "<br>Age Range:", age-1,"-",age,
+                                                                 "<br>Score:", score)), 
+             alpha = 0.5, binwidth = c(2,0.125)) +
+  scale_fill_manual("Gender",values = c("#F2749A","#7980DA")) +
+  geom_smooth(data=filter(evals, gender=="female"), aes(x = age, y = score, text = paste("Trend line for female professors")), 
+              method = lm, se = FALSE, color="#C86B86") +
+  geom_smooth(data=filter(evals, gender=="male"), aes(x = age, y = score, text = paste("Trend line for male professors")), 
+              method = lm, se = FALSE, color="#7378B7")+
+ ggtitle("How Age Affects Evaluation Score, by Professor's Gender") +
+  xlab("Age of Professor") +
+  ylab("Score")
+
+ggplotly(gg, tooltip = c("text"))
+  
+```
+
+This plot communicates the distribution of professor ages and scores by gender, as well as the general trend of how age affects evaluation score by gender. We can conclude from this plot that, by trend, evaluation scores decrease as professor age increases for both genders, but this decrease is more intense for female professors than male professors. Implicit here is the notion that there exists a negative bias towards older professors, and students are more critical of older female professors than they are of older male professors. This plot also shows that, overall, female professors in this sample are generally younger and receive lower evaluation scores than male professors. Moreover, all professors less than 32 are women, and all professors older than 62 are men. We may question whether these differences in range and distribution are an effect or even a cause of the implicit bias of students towards female professors of age. 
+
+Visual 3: 
+
+```{r}
+evals$gen.eth <- factor(evals$gen.eth, levels = c("female, minority","female, not minority","male, not minority", "male, minority"))
+
+ggplot(data = evals) +
+  geom_bar(aes(x = score.range, fill = gen.eth), position = "fill") +
+  geom_hline(yintercept = 0.50, color = "white", linetype = "dashed") +
+  scale_fill_brewer("Gender and \nEthnicity of Professor", palette = "PRGn") +
+  xlab("Score Range") +
+  ylab("Percent of Total") +
+  scale_y_continuous(labels = c("0%","25%","50%","75%","100%")) +
+  ggtitle("Professor Gender and Ethnicity Breakdowns by Score Range") 
+
+```
+
+This plot was intended to communicate the gender and ethnic make up of professors who score in specific score ranges. Many conclusions can be drawn here. Notably, for each score range below 3.5, female professors made up 50% or more of the professors who scored within these low ranges, and for each score range above 3.5, male professors made up more than 50% of professors who scored within these high ranges. Out of the professors who scored a near perfect score (4.7-5), nearly 70% of them were men. Based on this data, there seems to be a clear bias against female professors. When we also take into account minority status, we see that female minority professors are most represented in the 2.6-2.9 score range and least represented in the 4.4-4.7 and 4.7-5 score ranges (excluding the 2.3-2.6 range, where there are no female minority professors present). Female minority professors make up more than 25% of professors receiving a score between 2.3-2.6, and an estimate 5% or less of professors receiving a score above 4.4. Male minority professors do not follow the same trend. Notably, male minority professors only received scores above 3.2 in this dataset, and for each score range above that, male minority professors made up an estimated 5-10% of professors scoring within a given range. Thus, in conclusion, we see a bias towards female professors and an even more striking bias towards female minority professors that we do not see with male (minority or non-minority) professors. 
+
+
+Visual 4:
+
+```{r}
+
+gg3 <- ggplot(data = evals,aes(y = cls_perc_eval, x = age)) +
+  geom_point(aes(color = rank, text = paste(round(cls_perc_eval,1),"% of students evaluated","<br>", "this",age,"year old",rank,"professor")),alpha = 0.2, size = 4) +
+  #geom_smooth(aes(y = cls_perc_eval), linetype = 0, color = "#888888") +
+  geom_smooth(aes(color = rank, text = paste("Trend line for",rank,"professors")), span = 1,
+             se = FALSE, size = 1.35) +
+  #geom_ribbon(aes(ymin = 0,ymax = predict(loess((cls_perc_eval-55) ~ age))),alpha = 0.3,fill = 'green') +
+  scale_color_brewer("Rank",palette = "Set1") +
+  xlab("Age of Professor") +
+  ylab("Percent of Class that Completed Evaluation (%)") +
+  ggtitle("Student Evaluation Completion Rates by Professor Age and Rank")
+
+ggplotly(gg3, tooltip = c("text"))
+
+```
+
+This plot was made to communicate how a professor's age and rank influence what percentage of their students actually complete their student evaluation. Although a slight departure from the previous investigations, this plot in important in determining how demographics and status affect the actuall integrity and usefullness of student evaluations. We can conclude from the plot that, regardless of professor rank, professors aged around 45-55 had the highest rates of evaluation completion in their classes. Professors older than 63 (which were all tenured professors), had the lowest rates of evaluation completion overall, and professors younger than 35 (which were all tenure track professors) had low rates as well, yet slightly higher than professors around age 35, and considerable higher than professors older than 63. Pretty consistently, tenure track professors had higher completion rates than both teaching and tenured professors (which had similar rates throughout). The largest difference in completion rate can be seen between older tenure track professors (around age 50) and their teaching and tenured colleagues. Although there are far fewer tenure track professors around 50 than there are around 35 or so, these older tenure track professors some of the highest aggregated completion rates (around 90%). These conclusions suggest that the student evaluation process may predominantly be useful for tenure track professors, and specifically for middle-aged tenure track professors. For older professors, who may generally have completion rates at or below 50%, how useful is this system? 
+
+Visual 5: (Shiny App)
+
+```{r eval=FALSE}
+
+ui<-fluidPage(
+  radioButtons(inputId = "criteria",
+               label = "Select a Category:",
+               choices = c("rank","ethnicity","gender","language","age.range"),
+               selected = "gender",
+               inline = TRUE),
+  plotOutput(outputId = "scatterplot")
+)
+
+server<-function(input,output){
+  output$scatterplot<-renderPlot({
+    ggplot(data = evals, aes(y = score, x = bty_avg)) +
+  stat_density2d(aes(fill = ..level..), geom = "polygon", alpha = 0.6, h = 2) + 
+  facet_grid(.~eval(as.symbol(input$criteria))) +
+  scale_fill_distiller("Density", palette = "YlOrRd", direction = 1) +
+  xlab("Average Beauty Score") +
+  ylab("Teaching Score") +
+  ggtitle(paste("Heat map of professor teaching and 'beauty' scores, split by",input$criteria))
+      ## To treat string names as variables, we use eval(as.symbol(data$variable))
+  })
+}
+shinyApp(ui=ui, server=server)
+
+```
+
+This app was intented to comminucate the distributions of professor teaching scores and average 'beauty scores,' according to a selected variable. Many general trends could be concluded by this app. For rank, tenured professors seem to receive lower 'average beauty' scores than the two other professor ranks, and teaching professors seem to receive lower teaching scores than the other two ranks of professors. For ethnicity, minority professors seem to receive lower teaching scores but higher beauty scores than non-minority professors. Similarly, for gender, female professors seem to receive lower teaching scores but higher beauty scores than male professors. Professors whose primary language is not English consistently receive slightly higher beauty scores but far lower teaching scores than native-English-speaking professors. And for age, both beauty score and teaching score seem to decrease as the age of a professor increases. Ultimately, this app allows the user to explore the varying relationships between perceived beauty, perceived teaching quality, and professor identity, showing how beauty and teaching quality have a positive correlation when looking at variables like age, but may have a negative correlation when looking at variables like gender and ethnicity. 
+
+IV. Additional Questions/Future Work 
+
+1. How does the gender/ethnic diversity of the faculty impact evaluation scores? When female and/or minority professors are more highly represented, do they receive better scores?
+
+  To answer this question, I would need access to student evaluation data across multiple years at UT Austin. A possible way to visualize this trend would be to graph what percentage of the faculty represents each demographic along with the average scores of each demographic, across multiple years. 
+  
+2. How do biases against gender/ethnicity/age in the student evaluation system differ according to school and region. Do schools in different parts of the country show more/less bias towards certain professor identities? 
+
+  To answer this question, I would need to retrieve student evaluation data from schools across different regions of the country. It would be interesting, then, to create facet grids of the same plots (like Visual 2 from this projects) showing how trends may differ according to region and locaiton of school. This type of visualization could also be achieved with a series of choropleth maps, which could use graduated symbols to represent score differentials at various universities. 
+  
+  

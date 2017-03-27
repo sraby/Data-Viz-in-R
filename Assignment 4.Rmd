@@ -1,0 +1,208 @@
+---
+title: "Assignment 4"
+author: "Sam Raby"
+date: "10/6/2016"
+output: html_document
+---
+
+Problem 1
+You will be using the msleep data set for this question. This data set exists within mosaic. Get acquainted
+with the data before proceeding.
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r , warning=FALSE, message=FALSE}
+require(mosaic)
+require(ggplot2)
+require(lubridate)
+require(maps)
+
+data(msleep)
+help(msleep)
+head(msleep)
+dim(msleep)
+
+```
+
+a. Make a graph to determine whether average sleep totals vary between carnivores, omnivores, herbivores, etc. What does this graph indicate?
+
+```{r}
+
+ggplot(data = msleep) + 
+  stat_summary(aes(x = vore, y = sleep_total, fill = vore), fun.y = mean, geom = "bar") +
+  scale_fill_brewer("Type of '-vore'", palette = "Set1") + 
+  ggtitle("Mean Sleep by Animal Diet") +
+  ylab("Mean Total Sleep (Hrs/Day)") +
+  xlab("Animal Diet (-vore)")
+
+```
+This graph indicates that, on average, insectivores sleep the most hours per day, followed by omnivores, carnivores, and then herbivores sleeping the least hours per day. 
+
+b. Plot the sleep_total for each mammal against the number of hours that mammal is awake. Is this plot useful or interesting?
+
+```{r}
+
+ggplot(data = msleep, aes(x = awake, y = sleep_total)) +
+  geom_line(color = "orange") + 
+  geom_point(color = "firebrick") + 
+  ggtitle("Sleep Hours vs. Awake Hours by Mammal") +
+  xlab("Total Awake Time (Hrs/Day)") +
+  ylab("Total Sleep Time (Hrs/Day)")
+
+```
+
+This plot is neither interesting or useful as total sleep hours and awake hours always will always add up to 24 hours. This graph does show that these two variables are inversely proportional to each other, but this is simply because they both add up to a constant value. Therefore, no futher trend or information can be seen from this visualization.
+
+c. Can it be argued that the longer a mammal sleeps, the shorter the mammal’s sleep cycle? Show graphically. Any differences in trends based on the type of vore?
+
+```{r}
+
+ggplot(data = msleep, aes(x = sleep_total, y = sleep_cycle, color = vore)) +
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE) +
+  scale_color_brewer("Type of '-vore'", palette = "Set1") +
+  ggtitle("Sleep Hours vs. Sleep Cycle Time by Mammal") +
+  ylab("Sleep Cycle (Hrs)") +
+  xlab("Total Sleep (Hrs/Day)")
+
+```
+
+This graph indicates that for omnivores and herbivores, there may be a general trend in which mammals with longer daily sleep times have shorter sleep cycles. This is indicated by the purple and blue regression trend lines, which show a negative slope (despite having a visually-apparent discontinuity with the data points). This graph also indicates that for insectivores and carnivores, sleep cycle time is likely uncorrelated with total sleep time, as cycle time remained relatively constant across different sleep times. 
+
+d. Display two more visualizations of this data set and describe your findings.
+
+```{r}
+
+ggplot(data = msleep) +
+  geom_violin(aes(x = vore, y = brainwt/bodywt, fill = vore)) +
+  ggtitle("Brain to Body Weight Ratio by Animal Diet") + 
+  scale_fill_brewer("Type of '-vore'", palette = "Set1") + 
+  xlab("Type of -vore") +
+  ylab("Brain Weight as proportion of Body Weight")
+
+```
+The first plot, Brain to Body Weight Ratio by Animal Diet, suggests that omnivores and insectivores from this sample have a wider and generally higher range of brain to body weight ratios than do carnivores. Herbivores seem to have lower brain to body weight ratios like carnivores, with a few outliers with strikingly high ratios. 
+
+```{r}
+
+msleep$order2 <- reorder(msleep$order, msleep$sleep_total)
+
+ggplot(data = msleep) +
+  stat_summary(aes(x = order2, y = sleep_total, fill = order2), fun.y = mean, geom = "bar") + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  ggtitle("Mean Sleep by Animal Order") +
+  xlab("Order") +
+  ylab("Hours/Day") +
+  guides(fill = FALSE)
+
+```
+
+The second plot, Mean Sleep by Animal Order, ranks animal orders by average daily sleep of all animals in that order. The plot suggests that Chirpotera (Bats) from this sample sleep the most, on average around 20 hours/day,  when Perissodactyla (Odd-toed ungulate) sleep the least, on average around 4 hours/day. 
+
+Problem 2
+
+You will be using two data sets for this question. Both exist within mosaic - economics and presidential.
+Get acquainted with the data before proceeding.
+
+```{r}
+data("economics")
+data("presidential")
+help("economics")
+head(economics)
+dim(economics)
+help("presidential")
+head(presidential)
+dim(presidential)
+```
+
+a. Make a plot that maps unemployment (in thousands) over time. Be sure to adjust the axis labels and titles.
+
+```{r}
+
+ggplot(data = economics) +
+  geom_line(aes(x = date, y = unemploy)) +
+  geom_area(aes(x = date, y = unemploy), fill = "tomato") +
+  ggtitle("US Unemployment, 1967 - 2015") +
+  xlab("Year") +
+  ylab("Number of Unemployed Persons (in thousands)")
+
+```
+
+b. From your plot in part (a), identify when unemployment was at it’s highest. Find a way to mark this point on your plot. Add text near this point to describe why the spike may have occurred.
+
+```{r}
+
+arrange(economics, desc(unemploy))
+
+unemploy.max = subset(economics, unemploy == 15352)
+
+ggplot(data = economics, aes(x = date, y = unemploy)) +
+  geom_line() +
+  geom_area(fill = "tan1") + 
+  geom_point(data = unemploy.max, color = "firebrick2", size=2.5) +
+  annotate("text", x = as.Date("2002-10-01"), y = 15000, label="Highest Unemployment: Oct 2009 \n(Peak of the Great Recession)", color = "firebrick2") +
+  ggtitle("US Unemployment, 1967 - 2015") +
+  xlab("Year") +
+  ylab("Number of Unemployed Persons (in thousands)") 
+
+```
+
+c. Take a subset of the presidential data so that you have only presidential terms that are relevant to the economics data set. Display your subsetted presidential data.
+
+```{r}
+range(economics$date)
+
+pres2 = subset(presidential, end > as.Date("1967-07-01"))
+pres2
+
+```
+
+d. Now, work with geom_rect so that your graph identifies whether a republican or democrat was in office.
+Your objective here is to get a plot that looks like the one on the assignment page.
+
+• Hint: Look at the documentation for geom_rect and notice that you must supply xmin, xmax, ymax, and ymin within aesthetics. These four points are used to define the vertices of the rectangles plotted above. Think about which of the vertices are linked to variables in the data set and which are constant numeric values. Also think about what variable determines the fill colors.
+
+```{r}
+
+ggplot() +
+  geom_line(data = economics, aes(x = date, y = unemploy)) +
+  geom_rect(data = pres2, aes(xmin = start, xmax = end, ymin = 2500, ymax = 16000, fill = party), alpha = 0.4) +
+  scale_fill_manual("Party in Power", values=c("blue","red")) +
+  ggtitle("US Unemployment, 1967 - 2015") +
+  xlab("Year") +
+  ylab("Number of Unemployed Persons (in thousands)")
+
+```
+
+e. Describe the overall trends in unemployment and whether political party seems at all associated with unemployment.
+
+Given this visualization, we can see that for each segment in time when a Republican was president, unemployment variably increased. We can also see that for each segment in time when a Democrat was president (except for one), unemployment consistently decreased. It is also important to see that under Republican leadership, unemployment seems to have been a lot more variable, with many ups and downs, when under Democratic leadership, we see more stable curves with consistent decrease. Therefore, we may be able to argue that Democratic leadership works better to reduce unemployment in the US. 
+
+Problem 3
+
+Use the maps package with the function map_data to obtain boundary information about states in the United States. Subset the data so that you are only looking at New England states. Make each state a different color. Mark on the map all the different cities you have been in the past month within New England.
+
+```{r}
+
+all_states <- map_data("state")
+newengland <- filter(all_states, region %in% 
+                           c( "maine", "new hampshire", "vermont", "massachusetts",
+                              "rhode island", "connecticut"))
+
+ggplot()+
+  geom_map(data=newengland, aes(map_id=region, fill=region), map=newengland) +
+  expand_limits(x=newengland$long, y=newengland$lat) +
+  scale_fill_brewer("States", palette = "Dark2") + 
+  geom_point(aes(x = -71, y = 42.3)) + 
+  annotate("text", x = -71, y = 42.45, label="Boston") +
+  geom_point(aes(x = -72.6, y = 41.5)) + 
+  annotate("text", x = -72.6, y = 41.65, label="Middletown") +
+  geom_point(aes(x = -71.4, y = 41.8)) + 
+  annotate("text", x = -71.4, y = 41.95, label="Providence") +
+  ggtitle("Recent Destinations within New England") +
+  xlab("Longitude") +
+  ylab("Lattitude")
+
+```

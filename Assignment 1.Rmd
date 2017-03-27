@@ -1,0 +1,55 @@
+---
+title: "Assignment 1"
+author: "Sam Raby"
+date: "September 13, 2016"
+output: html_document
+---
+
+Load in Data:
+```{r }
+source("http://www.openintro.org/stat/data/arbuthnot.R")
+
+source("http://www.openintro.org/stat/data/present.R")
+```
+
+# 1. What years are included in this data set? What are the dimensions of the data frame and what are the variable or column names? 
+
+```{r}
+present
+dim(present)
+names(present)
+```
+
+Solution:
+The "present" dataset includes years 1940-2002. The dimensions of the data frame are 63 observations with 3 variables each. The column names are "year", "boys", and   "girls".
+
+# 2. How do the counts of boys and girls in the present day birth records compare to Arbuthnot's? Are they on a similar scale? 
+
+```{r}
+arbuthnot
+```
+
+Solution: The counts of boys/girls in the arbuthnot dataset seem to be in the range of about 2,500-8,500 per gender per year. The counts for boys/girls in the present dataset seem to be in a range of about 1,200,000 - 2,200,000 per gender per year. Therefore, these datasets are on very different scales!
+
+# 3. Make a plot that displays the boy-to-girl ratio for every year in the data set. What do you see? Does Arbuthnot's observation about boys being born in greater proportion than girls hold up in the U.S.? Include the plot in your response. 
+
+```{r}
+require(mosaic)
+present$ratio<-present$boys / present$girls
+xyplot(ratio ~ year, data=present, type="l")
+```
+
+Solution: The accompanying plot shows that the ratio between boys and girls stays within the range 1.045 to 1.060 boys for every girl. This is consistent with Arbuthnot's observation about buys being born in greeter proportion than girls. However, this is perhaps a more compelling dataset since the scale of this US dataset is so much larger than Arbuthnot's. 
+
+# 4. In what year did we see the most total number of births in the US?
+
+```{r}
+present$total<-present$boys + present$girls
+
+xyplot(total ~ year, data=present, type="l")
+```
+
+By generating a new column of total births, generating an xy-plot, and sorting the present dataset table to see its maximum value, we can see that the most total number of births in the U.S. occurred in 1961 with a total of 4,268,326 births.
+
+
+

@@ -1,0 +1,125 @@
+---
+title: "Assignment 6"
+author: "Sam Raby"
+date: "11/16/2016"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+Assignment 6
+
+For this assignment we will be using the dataset Food_inspections.csv which is recent data pertaining to health code inspections and violations in Chicago. It is a larger dataset than we usually use, so you will find some tasks take a bit longer.
+
+Data:
+```{r}
+
+food <- read.csv("/Volumes/courses/QAC/qac251/course_materials/Code and Data/Food_inspections.csv")
+
+```
+
+
+1. Check the structure of the data. Ensure numeric values have been read in as numeric and date variables have been read in as dates. Convert any variables if necessary.
+
+```{r}
+require(mosaic)
+require(reshape2)
+food <- mutate(food, Inspection.Date = as.Date(Inspection.Date, format = "%m/%d/%y"))
+
+```
+
+
+2. Construct a new variable in this dataset to determine which day of the week each date corresponds to. (HINT: We did this on our first day with ggplot). Construct a visual to determine whether inspections occur more frequently on a particular day of the week.
+
+```{r}
+
+require(lubridate)
+food$day = wday(food$Inspection.Date, label = TRUE)
+
+require(ggplot2)
+require(RColorBrewer)
+
+ggplot(data = food)+
+  geom_bar(aes(x = day, fill = day)) +
+  scale_fill_brewer("Day",palette = "Set2") +
+  xlab("Day of the Week") +
+  ylab("Total Inspections") +
+  ggtitle("Days of Health Code Inspections in Chicago")
+
+```
+
+3. Construct a new variable that indicates (with a 0 or 1) whether an inspection failed. Find the proportion of inspections that failed for each day of the week. Is there a higher/lower tendency for inspections to fail on a particular day?
+
+```{r}
+
+food$Fail = 0 
+food$Fail[food$Results == "Fail"] = 1
+
+ggplot(data = food)+ 
+  stat_summary(aes(x = day, y = Fail*100, fill = day), fun.y = mean, geom = "bar") +
+  scale_fill_brewer("Day",palette = "Set3") +
+  xlab("Day of the Week") +
+  ylab("% Failure") +
+  ggtitle("Chance of Health Code Inspection Failure by Day of the Week")
+
+
+```
+
+From this visualization, it seems that inspections that occur on Saturday have a much higher chance of failing than ones that occur on other days of the week. 
+
+4. Construct a visual to determine which area(s) in Chicago are inspected frequently. State any interesting findings.
+
+```{r eval=FALSE}
+require(leaflet)
+
+leaflet(food) %>% 
+  addProviderTiles("Stamen.Toner") %>% 
+  addCircles(~Longitude, ~Latitude, popup=paste("Inspected Business: ",food$DBA.Name), weight = 3, radius=100, color="#DB104A", fillColor = "#DB104A", fillOpacity = 1, opacity = 1, stroke = TRUE) %>%
+  addLegend("bottomright",colors = "#DB104A", labels = "One Inspection", title = "Health Inspections, Chicago")
+
+```
+
+According to this map, it seems a lot more inspections happen north of downtown Chicago than in areas west and south of downtown. This is interesting because the northern regions are historically wealthier and whiter neighborhoods in the city. This map implies that these neighborhoods are perhaps receiving higher levels of regulation and safety checks than more low-income, minority neighborhoods. 
+
+
+5. Construct a visual that allows you to easily assess the result and risk attached to each inspection. State any interesting findings.
+
+```{r eval=FALSE}
+Color = colorFactor(c("#1a9850","#d73027"), domain = food$Fail)
+
+leaflet(food) %>% 
+  addProviderTiles("Stamen.Toner") %>% 
+  addCircles(~Longitude, 
+             ~Latitude, 
+             popup=paste("Business:", food$DBA.Name, "<br>",
+                         "Inspection Result:", food$Results, "<br>",
+                         "Risk:", food$Risk),
+             weight = 3, radius=250, opacity = 1, 
+             color=~Color(Fail), fillOpacity = 1, fillColor =~Color(Fail)) %>%
+  addLegend("bottomright",colors = c("#1a9850","#d73027"), labels = c("Pass","Fail"), title = "Health Inspection Outcomes, Chicago")
+
+```
+
+This map interestingly shows that, although inspections occur disproportionately in north Chicago, the proportion of those inspections that fail seems to be constant throughout the entire city. From clicking on the pop-ups, it also seems that evaluated levels of risk seem to also be discributed consistently across Chicago.
+
+6. Using this data, construct an additional question of interest. Construct an appropriate visualization to answer that question and describe your findings.
+
+Questions of Interest: How does the rate of inspection failure differ with type of establishment?
+
+```{r}
+
+food2 = subset(food, Facility.Type == "School" | Facility.Type == "Restaurant" | Facility.Type == "Mobile Food Dispenser" | Facility.Type == "Hospital" | Facility.Type == "Grocery Store" | Facility.Type == "Children's Services Facility" | Facility.Type == "Catering")
+
+ggplot(data = food2)+ 
+  stat_summary(aes(x = Facility.Type, y = Fail, fill = Facility.Type), fun.y = mean, geom = "bar") +
+  scale_fill_brewer("Type of Facility",palette = "Dark2") +
+  xlab("Type of Facility") +
+  ylab("% Failure") +
+  ggtitle("Chance of Health Code Inspection Failure by Type of Facility") +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+```
+
+This visualization indicates that facilities like mobile food dispensors and grocery stores have a much higher rate of failing inspection than other facilities shown, when hospitals have a considerably lower rate of failing inspection.  

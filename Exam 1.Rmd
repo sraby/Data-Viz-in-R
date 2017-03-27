@@ -1,0 +1,222 @@
+---
+title: "Exam 1"
+author: "Sam Raby"
+date: "10/12/2016"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r}
+require(babynames)
+require(mosaic)
+require(reshape2)
+require(ggplot2)
+require(maps)
+
+```
+
+Problem 1 
+
+For this problem you will need to install the package babynames. This package will provide a
+data set with baby names provided by the Social Security Administration from 1880 to 2013. Only baby names with at least 5 applications make it to the list.
+
+a. Track the evolution of your name over time. Over what time period was your name the most popular in the United States. During what period did your name generally increase/decrease in popularity relative to the size of the population in a given year? How does this relate to when you were born? (If your name does not make the list, graphically track the evolution of your middle name or of a good friend’s name. Since many names can apply to both males and females - you will want to filter the data by a given gender).
+
+```{r}
+data("babynames")
+help("babynames")
+
+Sam = subset(babynames, name == "Sam" & sex == "M")
+
+ggplot(data = Sam) +
+  geom_line(aes(x = year, y = prop), color = "slateblue4") +
+  geom_point(aes(x = 1994, y = 0.0003), color = "red") +
+  annotate("text", x = 1994, y = 0.0005, label="My Birthyear", color = "red") +
+  ggtitle("Popularity of baby name 'Sam' over time") +
+  xlab("Year") +
+  ylab("'Sam' as proportion of all baby names")
+
+```
+
+According to the plot, the use of the name "Sam" was in popular demand from 1880 to about 1910, representing about 4/1000 baby names given. Around 1910, it underwent a steep decline in use, and around the 1940s and 1950s, "Sam" leveled out at around 3 in every 10,000 baby names given, which stayed consistent up until my birthday in 1994. 
+
+b. Only look at the data from 1945-2010. Since 1945 there have been some labels given to generations. The Baby Boomer Generation (1945-1964), Generation X (1965-1979), Millennials (1980-1995), and Generation Z (1996-2010). Include these generational names in your visualization. During what generation is your name most population?
+
+```{r}
+
+BBG = subset(Sam, year >= 1945 & year <= 1964)
+BBG$gen <- "The Baby Boomer Generation"
+
+GX = subset(Sam, year >= 1965 & year <= 1979)
+GX$gen <- "Generation X"
+
+Mill = subset(Sam, year >= 1980 & year <= 1995)
+Mill$gen <- "Millenials"
+
+GZ = subset(Sam, year >= 1996 & year <= 2010)
+GZ$gen <- "Generation Z"
+
+Sam2 = union(union(BBG, GX),union(Mill, GZ))
+
+ggplot(data = Sam2) +
+  geom_line(aes(x = year, y = prop)) +
+  geom_point(aes(x = year, y = prop, color = gen)) +
+  scale_color_brewer("Generation", palette = "Set2") +
+  ggtitle("Popularity of baby name 'Sam' over time") +
+  xlab("Year") +
+  ylab("'Sam' as proportion of all baby names") +
+  ggtitle("Popularity of baby name 'Sam' over time")
+
+```
+
+As the plot indicates, the name "Sam" for males was by far most popular in the Baby Boomer Generation.
+
+Problem 2 
+
+Shapesplosion was a game you played a few weeks ago in class. The purpose of the game was
+to fit shapes into a puzzle format as quickly as you could. The data is called “PerfectionFlash.csv" and is available in the P-drive
+
+```{r}
+shapes = read.csv("/Volumes/courses/QAC/qac251/course_materials/Code and Data/PerfectionFlash.csv")
+
+```
+
+
+a. This data set currently includes all data from anyone who ever played the game. We ultimately want to be able to compare our class against other people who played the game under the same experimental conditions: We matched 24 shapes, showed the timer, had no limit, had a proximity of 54, and played several matching scheme scenarios (both, shape, diffColor). Subset the data accordingly. Among this subset, construct a visualization to determine what matching scheme scenario was played most often.
+
+```{r}
+
+shapes2 = subset(shapes, numShapes == 24 & timerDisplay == 1 & requestedTime == 0 & proximityValue == 54 & (matchingScheme == "both" | matchingScheme == "shape" | matchingScheme == "diffColor"))
+
+ggplot(data = shapes2) +
+  geom_bar(aes(x = matchingScheme, fill = matchingScheme)) +
+  scale_fill_brewer("Matching Scheme", palette = "Dark2") +
+  ggtitle("Shapesplosion matching schemes for all games similar to our class's") +
+  xlab("Matching Scheme") +
+  ylab("Total Games Played")
+
+```
+
+As the plot shows, the "shape" matching scheme was played the most in terms of all Shapesplosion games following the same experimental conditions of our class.
+
+b. Construct one visualization to display both the mean and median time used between each of the three matching scheme scenarios. What does the plot indicate?
+
+```{r}
+ggplot(data = shapes2) +
+  stat_summary(aes(x = matchingScheme, y = timeUsed/1000), fun.y = mean, geom = "bar", fill = "#6A123D") +
+  stat_summary(aes(x = matchingScheme, y = timeUsed/1000), fun.y = median, geom = "point", color = "#D01C09") +
+  annotate("text", x = 3, y = 58, label="Red Point = Median", color = "#D01C09") +
+  ggtitle("Mean play time used by matching scheme scenario") +
+  xlab("Matching Scheme") +
+  ylab("Mean Play Time (in seconds)")
+
+```
+
+The plot indicates that "diffColor" was the most time consuming matching scheme scenario, followed by "shape" and then "both," which took on average (and by median) the least time.  
+
+c. Create a new variable IsItUs to identify whether a game was played by someone from our class (with values yes or no). Construct one visualization to display how the distribution of number of errors varies between our class versus everyone else. What are your findings?
+
+```{r}
+
+shapes2$IsItUs <- "no"
+shapes2$IsItUs[shapes2$groupID == "QAC251"] <- "yes" 
+
+ggplot(data = shapes2) +
+  geom_violin(aes(y = numErrors, x = IsItUs, color = IsItUs, fill = IsItUs), adjust = 1.4) +
+  ggtitle("Distribution of number of errors: our class vs. everyone else") +
+  xlab("Our Class?") +
+  ylab("Number of Errors") +
+  theme(legend.position="none")
+
+```
+
+This plot ultimately shows that the distribution of number of errors varies little between our class and everyone else. Notably, players from other groups played a larger proportion of their games that had 0 errors, in comparison to our class. However, our class never played a game amassing more than 20 errors, when the set of other groups had error counts up above 60. 
+
+d. What other interesting question can you answer with the available data? Construct an appropriate visualization to answer that question.
+
+```{r}
+
+shapes$numShapes2 <- as.factor(shapes$numShapes)
+shapes$requestedTime2 <- as.factor(shapes$requestedTime)
+
+ggplot(data = shapes) +
+  stat_summary(aes(x = numShapes2, y = numErrors, fill = requestedTime2), fun.y = mean, geom = "bar", position = "dodge") + 
+  ggtitle("Mean number of errors by time limit and shape matching count") +
+  xlab("Number of Shapes Asked to Match") +
+  ylab("Mean Number of Errors") + 
+  scale_fill_brewer("Time Limit in Seconds \n (0 indicated no limit)", palette = "YlGnBu")
+
+```
+
+Question of Interest: For the entire shapes dataset, how does the number of shapes needed to be matched and time limit affect the users likelyhood of making an error?   
+
+This plot shows us some trends that begin to answer this question. First of all, we can see a general trend from left to right on the graph: as the number of shapes asked to match increases, number of errors also increases. However, trends differ according to time limit. For no limit and 45 second limit, this trend is still present, but for 25 second and 65 second limits, there does not seem to be a strong correlation between number of shapes asked to match and number of errors. Lastly, keeping number of shapes constant, we can see that number of errors generally increases as time limit increases. However, games with no time limit had relatively low amounts of errors in comparison to the other time limits. 
+
+Problem 3 
+
+Load in data which gives nutritional information on 30 popular breakfast cereals.
+
+```{r}
+cereal<-read.csv("http://www.lock5stat.com/datasets/Cereal.csv")
+```
+
+a. Construct a visualization to decipher the relationship between fat, calories, and manufacturer. What can be said about the relationship between fat and calories? How does this relationship vary for the different manufacturers?
+
+```{r}
+
+ggplot(data = cereal, aes(x = Calories, y = Fat, color = Company)) +
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE) +
+  scale_color_brewer("Manufacturer", palette = "Set1") +
+  ggtitle("Trend in fat vs. calories between cereal manufacturers") 
+
+```
+
+Overall, the plot indicates that the caloric content of a cereal increases along with its fat content. However, as cereals made by manufactureres "G" and "Q" show a similar trend between these two variables, cereals made by manufacturer "K" increase in calories along lesser increases in fat content. Perhaps this indicates that these cereals have more caloric ingredients that are not high in fat, when compared to cereals from the other two manufacturers.
+
+b. Suppose you are in search of a cereal with relatively low fat, low calories, and high protein. Construct a plot which will help you locate such a cereal. Your plot should also include manufacturer. Then, add on the plot the text to identify the name of the chosen cereal.
+
+```{r}
+
+ggplot(data = cereal, aes(x = Calories, y = Fat, size = Protein, color = Company)) +
+  geom_point() +
+  scale_color_brewer("Manufacturer", palette = "Set1") +
+  ggtitle("Fat, Calories, and Protein by Cereal Brands") +
+  annotate("text", x = 131, y = 0.4, label="<- Special K", color = "Blue")
+
+```
+
+Problem 4 
+
+The data file CTEducation2015.csv contains data on educational attainment by county in the
+year 2015. It contains the number of people in each county with a given education level. Column names should be self explanatory.
+
+Construct a county-level choropleth to describe rate of educational attainment of Bachelors or more. Interpret your findings.
+
+```{r}
+CTEd = read.csv("/Volumes/courses/QAC/qac251/course_materials/Code and Data/CTEducation2015.csv")
+
+CTEd$Bach.perc = CTEd$BachelorOrHigher/(CTEd$NumberLessThanHS + CTEd$NumberHSOnly + CTEd$SomeCollege + CTEd$BachelorOrHigher) * 100
+
+all_county <- map_data("county")
+CT_county <- subset(all_county, region == "connecticut")
+names(CT_county) = c("long","lat","group","order","state","region")
+
+ctlabels <- aggregate(cbind(long, lat) ~ region, data=CT_county, 
+                    FUN=function(x)mean(range(x)))
+ggplot()+ 
+  geom_map(data=CT_county, aes(map_id= region), map = CT_county) + 
+  geom_map(data=CTEd, aes(map_id= region, fill = Bach.perc), map = CT_county) + 
+  expand_limits(x = CT_county$long, y = CT_county$lat)+
+  scale_fill_gradient("% of Residents with \n Bachelors or More", low="pink", high="purple") +
+  ggtitle("Educational Attainment across CT Counties") +
+  xlab("Longitude") +
+  ylab("Lattitude") +
+  geom_text(data=ctlabels, aes(long, lat, label = region), size=2)
+
+```
+
+This map shows that Fairfield county has the highest percentage of residents with a Bachelors degree in the state (arund 45%), while Windham county has the lowest percentage of residents with a Bachelors degree in the state (around 25%). 

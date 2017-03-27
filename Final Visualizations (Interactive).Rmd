@@ -1,0 +1,80 @@
+---
+title: "Final Visualizations (Interactive)"
+author: "Sam Raby"
+date: "12/8/2016"
+output: html_document
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
+```
+
+Load in Data...
+
+```{r}
+evals = download.file("http://www.openintro.org/stat/data/evals.RData", destfile = "evals.RData")
+load("evals.RData")
+```
+
+Data Manipulation...
+
+```{r}
+require(mosaic)
+require(ggplot2)
+require(RColorBrewer)
+require(plotly)
+require(shiny)
+
+evals$age.range = "Younger than 35"
+evals$age.range[evals$age >= 35 & evals$age < 45] = "35 - 45"
+evals$age.range[evals$age >= 45 & evals$age < 55] = "45 - 55"
+evals$age.range[evals$age >= 55 & evals$age < 65] = "55 - 65"
+evals$age.range[evals$age >= 65] = "65 or Older"
+
+evals$age.range <- factor(evals$age.range, levels = c("Younger than 35","35 - 45","45 - 55","55 - 65","65 or Older"))
+
+evals$rank <-factor(evals$rank, levels = c("tenure track","teaching","tenured"))
+
+evals$gen.eth <- with(evals, interaction(gender, ethnicity, sep = ", "))
+
+evals = mutate(evals, score.range = cut(score, 9))
+evals <- mutate(evals, score.range = gsub(pattern = ",", "-", score.range))
+evals <- mutate(evals, score.range = gsub(pattern = "]", "", score.range))
+evals <- mutate(evals, score.range = gsub(pattern = "[(]", "", score.range))
+
+```
+
+This dataset is a collection of end-of-semester student evaluation scores for 500 professors at UT Austin in 2013. Included are the demographics of each professor and the charcteristics of each course being evaluated. In addition, six students scored each professor on their "level of beauty." Data was retrieved from OpenIntro Statistics. 
+
+Visual 5: (Shiny App)
+
+```{r}
+
+ui<-fluidPage(
+  radioButtons(inputId = "criteria",
+               label = "Select a Category:",
+               choices = c("rank","ethnicity","gender","language","age.range"),
+               selected = "gender",
+               inline = TRUE),
+  plotOutput(outputId = "scatterplot")
+)
+
+server<-function(input,output){
+  output$scatterplot<-renderPlot({
+    ggplot(data = evals, aes(y = score, x = bty_avg)) +
+  stat_density2d(aes(fill = ..level..), geom = "polygon", alpha = 0.6, h = 2) + 
+  facet_grid(.~eval(as.symbol(input$criteria))) +
+  scale_fill_distiller("Density", palette = "YlOrRd", direction = 1) +
+  xlab("Average Beauty Score") +
+  ylab("Teaching Score") +
+  ggtitle(paste("Heat map of professor teaching and 'beauty' scores, split by",input$criteria))
+      ## To treat string names as variables, we use eval(as.symbol(data$variable))
+  })
+}
+shinyApp(ui=ui, server=server)
+
+```
+
+
+
+
+

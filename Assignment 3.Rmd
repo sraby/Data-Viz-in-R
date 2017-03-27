@@ -1,0 +1,140 @@
+---
+title: "Assignment 3"
+author: "Sam Raby (worked with Katya Deve)"
+date: "10/5/2016"
+output: html_document
+---
+
+Problem 1:
+
+Gapminder is a terrific resource for data, usually about countries. One file provides data about the percentage of adults ages 15-49 who have HIV per country. Load the data into R (it is available on the P drive).
+
+Note that this data set is in wide format: each row corresponds to a country, and each column corresponds to a year. This is also often called panel data.
+We want to plot a time series for a selection of countries. We could do this by selecting the rows individually, but this would be a clunky solution that would not scale if we wanted to plot many countries. The solution is to reshape the data from into a long format.
+
+
+Load In Data: 
+```{r warning=FALSE, message=FALSE}
+HIV = read.csv("/Volumes/courses/QAC/qac251/course_materials/Code and Data/HIV.csv")
+airlines = read.csv("/Volumes/courses/QAC/qac251/course_materials/Code and Data/airlines.csv")
+```
+
+
+a. Reshape the hiv data frame into long format and store that as a new data.frame. Your result should have only three columns: country, year, hiv.rate.
+
+Note: Do NOT display the whole data frame. Just show the head and the dimensions!!
+
+```{r warning=FALSE, message=FALSE}
+require(mosaic)
+require(ggplot2)
+require(maps)
+require(reshape2)
+
+HIVlong = melt(HIV, id="Estimated.HIV.Prevalence.....Ages.15.49.")
+names(HIVlong) <- c("country","year","hiv.rate")
+
+head(HIVlong)
+dim(HIVlong)
+
+```
+
+
+b. R does not allow column names to start with numbers. That is why the variable names are all of the form “X1978” and so on. Use the function gsub to remove the X’s, and then use as.numeric to force R to see the year column as a numeric vector instead of a character vector. This is achieved with the following code:
+
+(Demonstrate that your solution works by taking the range of the year variable)
+
+```{r}
+HIVlong <- mutate(HIVlong, year = as.numeric(gsub(pattern = "X", "", year)))
+range(HIVlong$year)
+```
+
+c. Find the subset of the data that pertains only to HIV rates for the United States, Ghana, Liberia, and South Africa, since 1990.
+
+```{r}
+HIVlong2 = filter(HIVlong, country == "United States" | country == "Ghana" | country == "Liberia"| country == "South Africa")
+HIVlong3 = filter(HIVlong2, year >= 1990)
+head(HIVlong3)
+```
+
+d. Create a time series plot (using ggplot) of HIV rate since 1990 to compare the trends in those 4 countries.
+
+```{r}
+ggplot(data = HIVlong3) + 
+  geom_line(aes(x = year, y = hiv.rate, color = country)) +
+  ggtitle("HIV Rate since 1990")
+
+```
+
+What do you observe about HIV rates in these countries?
+
+All countries (Except for US) showed an increase in HIV rate between 1990 and 1997, with South Africa showing the greatest increase, followed by Liberia and then Ghana. Liberia showed the largest relative decrease in HIV rate continuing into 2010, when Ghana, South Africa, and the US showed little to no relative decrease in HIV rate. 
+
+- - - - - - - - - - -
+
+Problem 2:
+For this problem we will be working with the Airline Delays (airlines.csv) data set. This is a massive archive of data that contains information about 150 million flights since 1987! Soon, we will learn how to deal with data of this magnitude, but for now, we’ll just work with the flights that came into and out of Bradley International Airport in 2012. This file is available on the P drive. A description of the fields in
+this data set is available here: (http://stat-computing.org/dataexpo/2009/the-data.html)
+
+a. Create a variable ArrivalDelayed for the condition that a flight’s arrival is delayed. If it was delayed,set the variable equal to 1, otherwise set it equal to 0. Create a second variable onTime for the condition that the flight’s arrival is within 5 minutes of its scheduled arrival time. Set this variable equal to 1 if the flight was between 5 minutes early to 5 minutes late and 0 otherwise.
+
+```{r}
+
+airlines$ArrivalDelayed = 0 
+airlines$ArrivalDelayed[airlines$ArrDelay > 0] = 1 
+
+airlines$onTime = 0 
+airlines$onTime[(airlines$CRSArrTime - airlines$ArrTime) < 5 & (airlines$CRSArrTime - airlines$ArrTime) > -5] = 1 
+
+
+```
+
+b. Which airline was on time most often? Display the top 5 airlines ranked by the percentage of their flights that were on time.
+
+```{r}
+
+airlines.sum = summarise(group_by(airlines, UniqueCarrier), mean(onTime))
+names(airlines.sum) = c("airline", "ontime.rate")
+airlines.sum = arrange(airlines.sum, desc(ontime.rate))
+airlines.sum[1:5, 1:2]
+```
+
+c. Answer the previous question separately for arrivals to Bradley and for departures from Bradley. Are the lists the same?
+
+```{r}
+
+airlines.toBDL = filter(airlines, Dest == "BDL")
+airlines.toBDL.sum = summarise(group_by(airlines.toBDL, UniqueCarrier), mean(onTime))
+names(airlines.toBDL.sum) = c("airline", "ontime.rate")
+airlines.toBDL.sum = arrange(airlines.toBDL.sum, desc(ontime.rate))
+
+airlines.fromBDL = filter(airlines, Origin == "BDL")
+airlines.fromBDL.sum = summarise(group_by(airlines.fromBDL, UniqueCarrier), mean(onTime))
+names(airlines.fromBDL.sum) = c("airline", "ontime.rate")
+airlines.fromBDL.sum = arrange(airlines.fromBDL.sum, desc(ontime.rate))
+
+airlines.toBDL.sum[1:5, 1:2]
+airlines.fromBDL.sum[1:5, 1:2]
+
+```
+The lists are not the same. There a separate set of top 5 airlines for inbound reliability than for outbound reliability. Moreover, flights to BDL seem to have higher ontime rates than flights leaving BDL.
+
+d. Find  the set of airports that sent planes to Bradley in 2012. Also find the set of airports to which planes leaving Bradley flew. Are these two sets different? If so, find these “one-way” airports and indicate whether you can only fly to them, or from them.
+Note: Search for code we haven’t seen before to help you complete this last task.
+
+```{r}
+
+# All airports that sent planes to Bradley in 2012
+airports.toBDL = unique(airlines.toBDL$Origin)
+airports.toBDL
+# All airports that took planes leaving from Bradley in 2012
+airports.fromBDL = unique(airlines.fromBDL$Dest)
+airports.fromBDL
+
+# Airports that sent planes to Bradley but received no flights from Bradley
+setdiff(airports.toBDL, airports.fromBDL)
+
+# Airports that took planes from Bradley but sent flights to Bradley
+setdiff(airports.fromBDL, airports.toBDL)
+
+```
+

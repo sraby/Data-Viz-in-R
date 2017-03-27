@@ -1,0 +1,265 @@
+---
+title: "Exam 2"
+author: "Sam Raby"
+date: "11/29/2016"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+QAC 251: Midterm Exam 2
+Due December 5, 2016 by 11:55pm
+
+Instructions: Please be sure to answer questions with relevant code and written arguments (when necessary). All graphs should contain useful and appropriate titles, axis labels, colors, and legends. Aim for the most elegant, simple, and visually appealing graph. Submit your exam as an html file in moodle. Late submissions will result in point penalty. No discussion or collaboration of the exam is permitted. All code and written answers should be uniquely your own. Honor code applies: no discussion with any other people including TA’s, peers, or other instructors. However, you are free to ask me clarification questions as needed. As with most things you will do in this class, there is no one right way to approach a problem and no one right graph.
+
+
+Problem 1:
+The data file CApregnancy.csv contains data for teen pregnancy rates per 1000 teens for California counties from 2009, 2010, and 2011.
+
+```{r}
+CApreg = read.csv("/Volumes/courses/QAC/qac251/course_materials/Code and Data/CApregnancy.csv")
+require(ggplot2)
+require(mosaic)
+require(RColorBrewer)
+require(reshape2)
+require(shiny)
+require(riverplot)
+require(plotly)
+require(babynames)
+```
+
+a. Describe the distribution of teen pregnancy rates for each year. How do they compare to one another? Construct a graph which easily communicates this information.
+
+```{r}
+
+CApreg.long = melt(CApreg, id = "County", na.rm = TRUE)
+CApreg.long <- mutate(CApreg.long, variable = as.numeric(gsub(pattern = "X", "", variable)))
+names(CApreg.long) = c("County","Year","Rate")
+CApreg.long$Year = as.factor(CApreg.long$Year)
+
+ggplot(data = CApreg.long) +
+  geom_density(aes(x = Rate, color = Year, fill = Year), alpha = 0.65, size = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  scale_fill_brewer(palette = "Set1") +
+  ggtitle("Distribution of CA Teen Pregnancy Rates by Year") +
+  ylab("Density")
+ 
+```
+
+This graph clearly shows that the distribution of teen pregnancy rates in CA consistently shifted to lower rates from 2009 through 2011. While 2009 had comparatively more teen pregnancy rates around and above 40%, 2010 showed less, and 2011 showed even less, with the most frequent teen pregnancy rates falling around 25%. 
+
+b. Construct a choropleth to describe average teen pregnancy rate across the 3 years of data provided. Indicate on the map the county names where teen pregnancy rates are among the highest on average.
+
+```{r}
+
+CApreg.avg = summarise(group_by(CApreg.long, County), mean(Rate))
+names(CApreg.avg) = c("region","Rate")
+CApreg.avg$region<-tolower(CApreg.avg$region)
+
+all_county <- map_data("county")
+CA_county <- subset(all_county, region == "california")
+names(CA_county) = c("long","lat","group","order","state","region")
+
+CAlabels <- aggregate(cbind(long, lat) ~ region, data=CA_county, 
+                    FUN=function(x)mean(range(x)))
+
+CAlabels.highest = filter(CAlabels, region %in% c("tulare","kings","del norte","kern","imperial"))
+
+ggplot()+ 
+  geom_map(data=CA_county, aes(map_id= region), map = CA_county, fill = "#888888") + 
+  geom_map(data=CApreg.avg, aes(map_id= region, fill = Rate), map = CA_county) +
+  expand_limits(x = CA_county$long, y = CA_county$lat)+
+  scale_fill_gradient("Average Teen Pregnancy Rate (%)", low="yellow", high="red") +
+  ggtitle("Average Teen Pregnancy Rate in CA, 2009 - 2011") +
+  xlab("Longitude") +
+  ylab("Lattitude") +
+  geom_text(data=CAlabels.highest, aes(long, lat, label = region), size=3.5, color = "navy") 
+
+
+```
+
+c. Construct an interactive choropleth that allows users to select the year to investigate. Interpret your findings.
+
+```{r eval=FALSE}
+names(CApreg) = c("region","2009","2010","2011")
+CApreg$region<-tolower(CApreg$region)
+
+ui<-fluidPage(
+  radioButtons(inputId = "criteria",
+               label = "Select a year to investigate:",
+               choices = c("2009","2010","2011"),
+               selected = "2009"),
+  plotOutput(outputId = "map")
+)
+
+server<-function(input,output){
+  output$map<-renderPlot({
+    ggplot()+ 
+      geom_map(data=CA_county, aes(map_id= region), map = CA_county, fill = "#888888") + 
+      geom_map(data=CApreg, aes(map_id= region, fill = eval(as.symbol(input$criteria))), map = CA_county) +
+      expand_limits(x = CA_county$long, y = CA_county$lat)+
+      scale_fill_gradient("Average Teen Pregnancy Rate (%)", low="yellow", high="red", limits = c(10,75)) +
+      ggtitle(paste("Average Teen Pregnancy Rate,",input$criteria)) +
+      xlab("Longitude") +
+      ylab("Lattitude") +
+      geom_text(data=CAlabels, aes(long, lat, label = region), size=2, color = "navy")
+      
+  })
+}
+  
+shinyApp(ui=ui, server=server)
+
+```
+
+These maps show that for all three years, the lowest pregnancy rates could be found in counties near San Francisco and Lake Tahoe, and the highest pregnancy rates could be found in south central California. By switching between the different years, this app shows that all CA counties generally had a decline in teen pregnancy rates between 2009 and 2010, and 2010 and 2011. Notably, however, certain counties like Del Norte and Modoc showed a sharp increase in pregnancy rates between 2009 and 2010. However, by comparing 2009 with 2011, it seems that almost every county had a lower teen pregnancy rate after this two year period.   
+ 
+d. Besides a map, find another effective way one can look at how these per county pregnancy rates have changed over time. Your graph should include county information, pregnancy rates, and year. What interesting information do you find?
+
+```{r}
+CApreg2 = read.csv("/Volumes/courses/QAC/qac251/course_materials/Code and Data/CApregnancy.csv")
+
+CApreg2<- filter(CApreg2, !is.na(X2009) & !is.na(X2011))
+CApreg2$County <- factor(CApreg2$County, levels = CApreg2$County[order(CApreg2$X2009)])
+
+plot_ly(data=CApreg2)%>%
+  add_segments(x = ~X2009, xend = ~X2011, y = ~County, yend = ~County, showlegend = FALSE, color = I("lightskyblue3")) %>%
+  add_markers(x = ~X2009, y = ~County, name = "2009", color = I("maroon"), text=~paste(County, "County:",X2009,"%")) %>%
+  add_markers(x = ~X2011, y = ~County, name = "2011", color = I("lightskyblue3"), text=~paste(County, "County:", X2011,"%")) %>%
+layout(
+  title = "Change in Pregnancy Rates by CA County, 2009 - 2011",
+  xaxis = list(title = "Pregnancy Rate %"),
+  margin = list(l = 100),
+  font = list(size = 5))
+
+```
+
+A lot of interesting information comes out of this graphic. We can very easily see the top  counties and bottom counties for teen pregnancy rates in 2009. With a slightly closer look, we can also point out the top and bottom counties for these rates in 2011, which differ slightly from the 2009 ones. WE also can clearly see that only 4 counties (with sufficient data) showed an increase in teen pregnancy rate between 2009 and 2011, namely Nevada, Butte, Humboldt, and Trinity. All other counties showed a decrease. Again, with a closer look, we can spot that Nevada had the largest increase in teen pregnancy rate over this period, and Colusa and Del Norte had the largest decreases in teen pregnancy rate.
+
+Problem 2: Investigate the data set energy.csv which shows energy usage (in quads) for the United States in the year 2015. There are different location type for where the energy gets used (for transportation, industrial, commercial, or residential purposes) and the sources of energy. The energy unit is quads in this dataset. Once the energy is used, some of those places generate energy which either gets rejected or goes to energy services. Construct a visualization that allows you to simultaenously evaluate which sources of energy are used for the given locations and how those locations contribute new energy. Describe your findings.
+
+```{r}
+
+energy = read.csv("/Volumes/courses/QAC/qac251/course_materials/Code and Data/energy.csv")
+
+locations = c("t","i","c","r")
+
+nodes<-data.frame(ID=c(names(energy)[2:6],locations,"Accepted","Rejected"), 
+                   x=c(rep(0,5),rep(1,4),rep(2,2)), #rep is "repeat" function (rep "0" 10 times)
+                   y=c(1:5,1.5,2.5,3.5,4.5,2,4),
+                   col=c(rep("#999999",5),"#DFA64A","#663A97","#396092","#DFD44A","#1a9850","#d73027"),
+                   labels=c("Petrol","Biomass","Coal","Natural Gas","Other","Transportation","Industrial","Commercial","Residential","Energy Accepted","Energy Rejected"))
+nodes$col<-paste(nodes$col, 95, sep="")
+edges<-data.frame(N1=c(rep("Petroleum",4),rep("Biomass",4),rep("Coal",4),rep("Natural.Gas",4),rep("Other",4),rep(locations,2)), 
+                   N2=c(rep(locations,5),rep("Accepted",4),rep("Rejected",4)), 
+                   Value=c(energy$Petroleum,energy$Biomass,energy$Coal,energy$Natural.Gas,energy$Other,energy$Energy_Created_Accepted,energy$Energy_Created_Rejected))
+river_data<-makeRiver(nodes, edges)                 
+riverplot(river_data, lty = 0, srt = 15, default_style = NULL, gravity = "top",
+          node_margin = 1, nodewidth = 1, plot_area = 0.5, nsteps = 50,
+          add_mid_points = NULL, yscale = "auto")
+text("Sources, Uses, and Subsequent Contributions of US Energy", x=1,y=6)
+
+
+```
+
+This graphic tells us a lot about the US energy industry. We can see that  transportation gets its energy almost exclusively from petrol, the industrial sector gets its power mainly from natural gas and petrol, and commercial/residential locations get energy mainly from natural gas and other sources. Out of all five sources, petrol is the most used source and coal and biomass are the least used. Out of all four locations, transportation uses the most energy, followed by industrial, residential, and commercial. Energy used for transportation mostly gets rejected by other energy systems, when energy used for industrial purposes mostly gets accepted by other energy purposes. Commercial and residential energy is more evenly split between accepted and rejected, but both locations do contribute the majority of their energy to other energy purposes. 
+
+
+Problem 3:
+
+Find 2 visualizations throughout the course that you think you can substantially improve – and improve them. You can look at Midterm 1, course notes, assignments, or labs – another place to look at is the news – either a graphic we have critiqued or one you have come across independently. Include both the old and improved version in your submission.
+
+Assignment 2, Problem 5a: Using the ‘HELPrct’ data set, how would you describe the depression scores (cesd) of subjects who had suicidal thoughts in the past 30 days and those who did not. Were the trends different for males and females?
+
+Old Version
+
+```{r}
+data(HELPrct)
+densityplot(~cesd| sex, groups = g1b, data = HELPrct, auto.key = TRUE, type = "")
+```
+
+Improved Version:
+
+```{r}
+
+HELPrct$suicidal = "Recent Suicidal Thoughts"
+HELPrct$suicidal[HELPrct$g1b == "no"] = "No Recent Suicidal Thoughts"
+
+ggplot(data = HELPrct, aes(x = sex, y = cesd)) +
+  geom_violin(aes(fill = sex, color = sex), alpha = 0.6) +
+  geom_boxplot(aes(fill = sex), weight = 0.5, size = 0.5, width = 0.25) +
+  facet_grid(~suicidal) +
+  scale_fill_manual(values = c("#c51b7d","#4d9221")) +
+  scale_color_manual(values = c("#c51b7d","#4d9221")) +
+  ggtitle("Depression Score Trends by Recent Suicidal Thoughts and Gender") +
+  xlab("") +
+  ylab("Depression Scores (cesd)")
+
+```
+
+
+Explanation: I improved the original graph here by making the trends in the data clearer and providing more detail to the viewer. By using color-matched violin plots, the viewer now sees four discrete shapes, and the viewer can more clearly see the difference in depression scores between genders and also between those who had/didn't have suicidal thoughts in the last 30 days. By including both violin plots and box plots, the viewer now sees estimates of the numerical range of each subset of data and the median and quartiles of each subset of data. By adding more detailed labels and title, the viewer now has an easier time understanding the story. 
+
+
+Midterm 1, Problem 1b: Only look at the data from 1945-2010. Since 1945 there have been some labels given to generations. The Baby Boomer Generation (1945-1964), Generation X (1965-1979), Millennials (1980-1995), and Generation Z (1996-2010). Include these generational names in your visualization. During what generation is your name most population?
+
+Old Version
+
+```{r}
+
+data("babynames")
+Sam = subset(babynames, name == "Sam" & sex == "M")
+
+BBG = subset(Sam, year >= 1945 & year <= 1964)
+BBG$gen <- "The Baby Boomer Generation"
+
+GX = subset(Sam, year >= 1965 & year <= 1979)
+GX$gen <- "Generation X"
+
+Mill = subset(Sam, year >= 1980 & year <= 1995)
+Mill$gen <- "Millenials"
+
+GZ = subset(Sam, year >= 1996 & year <= 2010)
+GZ$gen <- "Generation Z"
+
+Sam2 = union(union(BBG, GX),union(Mill, GZ))
+
+ggplot(data = Sam2) +
+  geom_line(aes(x = year, y = prop)) +
+  geom_point(aes(x = year, y = prop, color = gen)) +
+  scale_color_brewer("Generation", palette = "Set2") +
+  ggtitle("Popularity of baby name 'Sam' over time") +
+  xlab("Year") +
+  ylab("'Sam' as proportion of all baby names") +
+  ggtitle("Popularity of baby name 'Sam' over time")
+```
+
+New Version: 
+
+```{r}
+
+Generation = c("The Baby Boomer Generation (1945-1964)","Generation X (1965-1979)","Millennials (1980-1995)","Generation Z (1996-2010)")
+start = c(1944.5,1964.8,1979.8,1995.8)
+end = c(1964.8,1979.8,1995.8,2010.5)
+
+gen <- data.frame(Generation, start, end)
+gen$Generation <- factor(gen$Generation, levels = gen$Generation[order(gen$start)])
+Sam2$percent = Sam2$prop*100
+
+p <- ggplot(data = Sam2) +
+  geom_line(aes(x = year, y = percent)) +
+  geom_rect(data = gen, aes(xmin = start, xmax = end, ymin = 0.018, ymax = 0.085, fill = Generation), alpha = 0.4) +
+  geom_point(aes(x = year, y = percent)) +
+  scale_fill_brewer("", palette = "Set2") +
+  ggtitle("Popularity of baby name 'Sam' over time") +
+  xlab("Year") +
+  ylab("'Sam' as percentage of all baby names (%)") +
+  ggtitle("Popularity of baby name 'Sam' by generation")
+
+ggplotly(p)
+
+
+```
+
+Explanation: This new plot fixes some issues of the old plot and adds interactivity and detail. The old plot had a legend that ordered the generations differently from how the graph ordered them. It is not totally apparent when exactly wach generation starts and ends, and since the y-axis is in scientific notation, it is hard to decipher what "proportion of all baby names" means in terms of numerical values. The new plot fixes the legend mis-ordering, and the user can clearly note when each generation starts and ends by looking at the legend or hovering over each colored rectangle. The addition of the rectangles also allows the user to compare the relative lengths of times of each generation. The y data is now in percent, allowing the y axis to be more readable and the y data more comprehendable. By hovering over each point, the user can get more accurate estimates of baby name percentages by year. 

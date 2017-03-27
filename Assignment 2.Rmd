@@ -1,0 +1,91 @@
+---
+title: "Assignment 2"
+author: "Sam Raby"
+date: "9/22/2016"
+output: html_document
+---
+
+Problem 1:
+Please describe in a paragraph what insight you gained from the Tufte reading about data visualization.
+
+The Tufte reading gave me a lot of insight into methods of adding nuance and data-enrichment to graphics while also keeping them simple. Tufte stresses many key qualities that good graphics possess: multiple levels of detail, clear purpose and message, intuitive presentation, revelation of clear patterns and stories, and aesthetic beauty. Key to Tufte's work is his prioritization of the viewer. He talks through how graphic design should "direct the attention" of the viewer to the most important pieces of a story. Through many examples, Tufte showed how this process of directing attention, through the use of visual cues and parallels, can bring many variables of information into one cohesive message. Therefore, my main takeaway from his work is how a deliberacy, cleverness, and sense of restraint when designing data graphics will lead to successful work. 
+
+Problem 2: 
+Choose one of the following relatively simple data graphics and answer the following questions.
+Be sure to indicate which one you picked!
+
+• World’s Top 10 Best Selling Cigarette Brands, 2004-2007
+
+a. Identify the visual cues, coordinate system, and scale(s).
+
+Visual cues: 
+- position (used to rank Cig. companies from most to least profit)
+- length (used to quantify company profits)
+- color (used to differentiate different companies)
+
+Coord. System: 
+- Cartesian 
+
+Scales:
+- Linear numeric scale 
+
+b. How many variables are depicted in the graphic? Explicitly link each variable to a visual cue that you listed above.
+
+Variables:
+- Cigarette Companies (categorical): this variable is depicted through color and labelling 
+- Sales profit (quantitative): this variable is depicted through bar length, and ordered through position
+
+c. What would Tufte say about this data graphic? Critique it from his point-of-view.
+
+Tufte would appreciate this graphic for its simplicity, its clear purpose and message, and its ability to "induce the viewer to think about the substance rather than about methodology." However, he would likely scrutenize it for its lack of information, as it fails to reveal many layers of information or link together more than two variables. 
+
+
+Problem 3: 
+Choose one of the following collections of data graphics and answer the following questions.
+Be sure to indicate which one you picked!
+
+• Charts that Expain Food in America
+
+a. Briefly (one paragraph) critique the designer’s choices. Would you have made different choices? Why or why not.
+
+The designers of the data graphic collection "Charts that Expain Food in America" did a great job telling stories that reveal unexpected spatial patterns in the American food industry. The collection includes many effective choropleth maps that (for the most part) cater to the needs of the data they represent. For example, graphic #9 "Farmers are Getting Older" use a diverging color ramp to clearly indicate two extremes: where farmers are relatively young and where farmers are relatively old. Graphic #6, "Which crops are harvested where?", instead uses a blend mapping technique to render a multitude of categorical (and often overlapping) variables across the US. These specific choices of technique allow different datasets to speak most effectively according to their own structuring. My main critique of the collection would be that the ordering of the 40 graphics does not clearly emphasize a simple and effective message. Although the maps are split into categories, the sequencing of them jumbles up the messages that individual maps speak to. 
+
+Problem 4: 
+Choose one of the more complicated data graphics listed below:
+
+• CO2 Emissions
+
+a. What story does the data graphic tell? What is the main message that you take away from it?
+
+This graphic attempts to identify which world countries are contributing the most to CO2 emissions, and to what extent has pollution from these countries gotten better or worse from 2008-2009. Almost immediately, the main takeaway becomes clear: populous industrialized countries, such as China, the US, India, Russia, and Japan, contribute the most to air pollution by mass. A closer look shows that out of these countries, the US, Japan, and Russia all have decreasing emission rates when China and India have increasing rates of pollution.    
+
+b. Critique and/or praise the visualization choices made by the designer. Do they work? Are they misleading? Thought-provoking? Brilliant? Are there things that you would have done differently?
+Justify your response.
+
+This visualization is very clear and thoughtprovoking, providing a lot of rich and insightful information without overwhelming the viewer with too much. Their use of graduated circles to show emmissions allows for quick and easy analysis of which countries are contributing the most to pollution. By splitting up the countries into continental regions using color, the graphic also allows the user to spot the biggest offenders on a regional basis. Moreover, the inclusion of "Change in Emissions" by country adds another interesting and important element to the story.
+
+The one main thing I would have done differently is I would have normalized the data by population. This graphic is somewhat misleading: China is indicated as the #1 pollutor in the world, but China also has the highest population (which is not indicated). Therefore, in some ways, this graphic may give blame to certain countries where blame is not necessarily due. 
+
+Problem 5: 
+
+a. Using the ‘HELPrct’ data set, how would you describe the depression scores (cesd) of subjects who had suicidal thoughts in the past 30 days and those who did not. Were the trends different for males and females?
+
+```{r warning=FALSE, message=FALSE}
+require(mosaic)
+data(HELPrct)
+help("HELPrct")
+
+densityplot(~cesd| sex, groups = g1b, data = HELPrct, auto.key = TRUE, type = "")
+```
+
+The density plot of depression scores shows us that generally depression symptoms were generally worse for subjects who had suicidal thoughts in the past 30 days. This trend was also evident for both male and female subjects.  
+
+b. Identify each of the visual cues that you are using, and describe how they are related to each variable.
+
+Position: The primary visual cue is the position of the overlayed curves in relation to each other. The viewer relies on this visual cue in noticing that the pink curves are further to the right than each corresponding blue curve, indicating that depression symptoms were generally worse for subjects who had suicidal thoughts in the past 30 days. 
+
+Length: Working with position, the length (or height) of the curves tells the viewer generally which cesd scores were most prevalent for a given group of data.
+
+Color: The color of each curve differentiates two groups of data: subjects with and subjects without suicidal thoughts in the past 30 days. 
+
+
